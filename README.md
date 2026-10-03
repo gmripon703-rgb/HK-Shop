@@ -4,18 +4,38 @@ A high-converting, single-page dropshipping storefront featuring a fluid shoppin
 
 ---
 
-## 🚀 How to Publish to GitHub & Deploy to Cloudflare Pages / Workers
+## ⚡ Cloudflare Pages Node.js Setup (Fix for "Failed to setup node")
 
-Follow these simple steps to put your store online with worldwide CDN speed and free SSL:
+By default, Cloudflare Pages runs an outdated version of Node.js unless configured. Modern Vite + React 19 requires **Node.js 20**.
+
+### Pre-configured in this repository:
+1. **`.node-version`** and **`.nvmrc`**: Automatically instruct Cloudflare Pages to use **Node 20.18.0**.
+2. **`.npmrc`**: Configured with `legacy-peer-deps=true` and `engine-strict=false` to prevent dependency conflicts during `npm ci`.
+3. **`package-lock.json`**: Generated and tested for clean `npm ci` execution.
+
+### If configuring in the Cloudflare Dashboard manually:
+1. In your Cloudflare Dashboard, go to your Pages project:
+   **Settings** > **Environment variables** (under **Production** or **All environments**).
+2. Click **Add variable**:
+   - **Variable name**: `NODE_VERSION`
+   - **Value**: `20`
+3. (Optional) Add a second variable:
+   - **Variable name**: `NPM_FLAGS`
+   - **Value**: `--legacy-peer-deps`
+4. Click **Save**.
+5. Go to **Deployments** > click the three dots on the latest deployment > **Retry deployment**. It will build cleanly in ~30 seconds!
+
+---
+
+## 🚀 How to Publish to GitHub & Deploy to Cloudflare Pages
 
 ### Step 1: Push to GitHub
 
 1. Create a new repository on [GitHub](https://github.com/new) (e.g. `novadrop-store`).
-2. In your local terminal or workspace root, run:
+2. Run these commands in your terminal:
    ```bash
-   git init
    git add .
-   git commit -m "feat: complete dropshipping store with cart, COD, admin dashboard & navy UI"
+   git commit -m "fix: add Node 20 config and package-lock for Cloudflare Pages"
    git branch -M main
    git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/<YOUR_REPOSITORY_NAME>.git
    git push -u origin main
@@ -23,45 +43,24 @@ Follow these simple steps to put your store online with worldwide CDN speed and 
 
 ---
 
-### Step 2: Deploy to Cloudflare Pages (Recommended - 100% Free)
-
-Cloudflare Pages automatically builds your site and distributes it across 300+ edge locations worldwide with automatic continuous deployment on every Git push.
+### Step 2: Deploy to Cloudflare Pages (Free Global CDN)
 
 1. Log into your [Cloudflare Dashboard](https://dash.cloudflare.com/).
-2. In the left navigation, click **Compute (Workers & Pages)** > **Create application** > **Pages** tab.
-3. Click **Connect to Git** and authorize your GitHub account.
-4. Select your `novadrop-store` repository.
-5. In the **Build configuration** screen, enter:
-   - **Project Name**: `novadrop-store` (or your choice)
+2. Click **Compute (Workers & Pages)** > **Create application** > **Pages** tab.
+3. Click **Connect to Git** and choose your repository.
+4. Set the build settings:
    - **Framework preset**: `Vite`
    - **Build command**: `npm run build`
    - **Build output directory**: `dist`
-   - **Root directory**: `/` (leave blank or default)
+5. Under **Environment variables (advanced)**, ensure:
+   - `NODE_VERSION` = `20`
 6. Click **Save and Deploy**.
-7. In ~30-45 seconds, your storefront will be live at `https://novadrop-store.pages.dev`!
-
----
-
-### Step 3: Deploy via Cloudflare Workers / Wrangler CLI (Alternative)
-
-If you prefer deploying directly via the command line with Wrangler:
-
-```bash
-# 1. Install dependencies & build
-npm install
-npm run build
-
-# 2. Deploy to Cloudflare Pages directly
-npx wrangler pages deploy dist --project-name=novadrop-store
-```
-
-The configuration is already defined in `wrangler.toml` and `public/_headers`.
 
 ---
 
 ## 🛒 Key Storefront Features
 
-- **Navy Blue Light Mix Theme**: Deep luxury navy palette (`#070D1F` to `#1E293B`) with ambient glowing sapphire and warm gold/amber accents.
+- **Navy Blue Light Mix Theme**: Luxury navy canvas (`#070D1F` to `#0E1B38`) with ambient glowing sapphire and warm gold/amber accents.
 - **Wonderful Shopping Cart**:
   - Slide-over drawer with itemized goods, custom quantity steppers, and free shipping progress meter.
   - Live coupon codes (e.g. `WELCOME10` for 10% off).
@@ -80,21 +79,3 @@ The configuration is already defined in `wrangler.toml` and `public/_headers`.
   - Touch-optimized bottom bar for instant cart view and 1-tap COD ordering on mobile devices.
 - **Single-File Standalone Export**:
   - Click **"Export (PHP/HTML)"** to download self-contained single-page templates (`standalone-store.html` or `index.php`) ready to drop into any shared cPanel or Apache/Nginx web server.
-
----
-
-## 🛠 Local Development
-
-```bash
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview build
-npm run preview
-```
