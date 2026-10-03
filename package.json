@@ -34,6 +34,11 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
-    "@types/express": "^4.17.21"
+    "@types/express": "^4.17.21",
+    "@rolldown/binding-linux-x64-gnu": "1.2.12"
+  },
+  "optionalDependencies": {
+    "@rolldown/binding-linux-x64-gnu": "1.2.12",
+    "@rolldown/binding-linux-x64-musl": "1.2.12"
   }
 }
