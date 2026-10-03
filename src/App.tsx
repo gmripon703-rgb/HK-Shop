@@ -35,6 +35,17 @@ import { ExportSingleFileModal } from './components/ExportSingleFileModal';
 import { AdminDashboardModal } from './components/AdminDashboardModal';
 import { PRODUCTS as INITIAL_PRODUCTS, FREE_SHIPPING_THRESHOLD, STANDARD_SHIPPING_FEE } from './data/products';
 import { Product, CartItem, OrderDetails, StorePaymentConfig } from './types/store';
+import { auth, onAuthStateChanged, loginWithGoogle, logoutUser, type User } from './lib/firebase';
+import { 
+  subscribeToProducts, 
+  subscribeToOrders, 
+  updateOrderStatusInFirestore, 
+  saveProductToFirestore, 
+  deleteProductFromFirestore, 
+  saveSettingsToFirestore, 
+  saveOrderToFirestore, 
+  isUserAdmin 
+} from './lib/firestoreService';
 
 const DEFAULT_PAYMENT_CONFIG: StorePaymentConfig = {
   storeName: 'NovaDrop Direct',
@@ -151,12 +162,47 @@ export default function App() {
   const [quickViewProduct, setQuickViewProduct] = useState<Product | null>(null);
   const [appliedDiscountPercent, setAppliedDiscountPercent] = useState<number>(0);
 
+  // Firebase Auth State
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState<boolean>(false);
+
   // Notification toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Filters
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Firebase Auth Listener
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+      const adminStatus = isUserAdmin(user);
+      setIsAdminUser(adminStatus);
+    });
+    return () => unsubscribeAuth();
+  }, []);
+
+  // Real-time Firestore Products Sync
+  useEffect(() => {
+    const unsubscribeProducts = subscribeToProducts((remoteProducts) => {
+      if (remoteProducts && remoteProducts.length > 0) {
+        setProducts(remoteProducts);
+      }
+    }, INITIAL_PRODUCTS);
+    return () => unsubscribeProducts();
+  }, []);
+
+  // Real-time Firestore Orders Sync when Admin is logged in
+  useEffect(() => {
+    if (!isAdminUser) return;
+    const unsubscribeOrders = subscribeToOrders((remoteOrders) => {
+      if (remoteOrders && remoteOrders.length > 0) {
+        setOrders(remoteOrders);
+      }
+    });
+    return () => unsubscribeOrders();
+  }, [isAdminUser]);
 
   // Sync with LocalStorage
   useEffect(() => {
@@ -238,6 +284,24 @@ export default function App() {
     setIsCheckoutOpen(true);
   };
 
+  const handleLoginGoogle = async () => {
+    try {
+      const user = await loginWithGoogle();
+      showToast(`Welcome, ${user.displayName || user.email}!`);
+    } catch (err: any) {
+      showToast(`Google Sign-In: ${err?.message || 'Cancelled'}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      showToast('Signed out of admin session.');
+    } catch {
+      showToast('Sign out error.');
+    }
+  };
+
   const handleOrderSuccess = (newOrder: OrderDetails) => {
     setOrders((prev) => [newOrder, ...prev]);
 
@@ -254,6 +318,11 @@ export default function App() {
 
     setCart([]);
     showToast(`Order #${newOrder.orderId} placed successfully!`);
+
+    // Real-time Cloud Firestore Persistence
+    saveOrderToFirestore(newOrder).catch((err) => {
+      console.warn('Firestore order sync warning:', err);
+    });
   };
 
   // Admin Handlers
@@ -271,17 +340,32 @@ export default function App() {
       })
     );
     showToast(`Order #${orderId} marked as ${status}!`);
+
+    // Real-time Cloud Firestore update
+    updateOrderStatusInFirestore(orderId, status).catch((err) => {
+      console.warn('Firestore order status sync warning:', err);
+    });
   };
 
   const handleAddProduct = (newProduct: Product) => {
     setProducts((prev) => [newProduct, ...prev]);
     showToast(`Product "${newProduct.name}" published to live store!`);
+
+    // Real-time Cloud Firestore product publish
+    saveProductToFirestore(newProduct).catch((err) => {
+      console.warn('Firestore save product sync warning:', err);
+    });
   };
 
   const handleDeleteProduct = (productId: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== productId));
     setCart((prev) => prev.filter((it) => it.product.id !== productId));
     showToast('Product removed from store.');
+
+    // Real-time Cloud Firestore delete
+    deleteProductFromFirestore(productId).catch((err) => {
+      console.warn('Firestore delete product sync warning:', err);
+    });
   };
 
   const handleUpdateProductStock = (productId: string, newStock: number) => {
@@ -293,6 +377,11 @@ export default function App() {
   const handleSavePaymentConfig = (config: StorePaymentConfig) => {
     setPaymentConfig(config);
     showToast('Payment settings updated.');
+
+    // Real-time Cloud Firestore settings save
+    saveSettingsToFirestore(config).catch((err) => {
+      console.warn('Firestore settings sync warning:', err);
+    });
   };
 
   // Filtered Products
@@ -327,6 +416,8 @@ export default function App() {
         onOpenCart={() => setIsCartOpen(true)}
         onOpenExportModal={() => setIsExportOpen(true)}
         onOpenAdminDashboard={() => setIsAdminOpen(true)}
+        currentUser={currentUser}
+        isAdminUser={isAdminUser}
       />
 
       <main className="flex-1">
@@ -980,6 +1071,10 @@ export default function App() {
         onDeleteProduct={handleDeleteProduct}
         onUpdateProductStock={handleUpdateProductStock}
         onSavePaymentConfig={handleSavePaymentConfig}
+        currentUser={currentUser}
+        isAdminUser={isAdminUser}
+        onLoginWithGoogle={handleLoginGoogle}
+        onLogout={handleLogout}
       />
 
       {/* Export Single File Modal */}

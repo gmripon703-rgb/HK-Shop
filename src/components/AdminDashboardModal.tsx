@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { type User } from 'firebase/auth';
 import { 
   X, 
   BarChart3, 
@@ -21,7 +22,11 @@ import {
   Search,
   ExternalLink,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  Flame,
+  LogIn,
+  LogOut,
+  ShieldAlert
 } from 'lucide-react';
 import { Product, OrderDetails, StorePaymentConfig } from '../types/store';
 
@@ -36,6 +41,10 @@ interface AdminDashboardModalProps {
   onDeleteProduct: (productId: string) => void;
   onUpdateProductStock: (productId: string, newStock: number) => void;
   onSavePaymentConfig: (config: StorePaymentConfig) => void;
+  currentUser?: User | null;
+  isAdminUser?: boolean;
+  onLoginWithGoogle?: () => void;
+  onLogout?: () => void;
 }
 
 export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
@@ -49,6 +58,10 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
   onDeleteProduct,
   onUpdateProductStock,
   onSavePaymentConfig,
+  currentUser,
+  isAdminUser = false,
+  onLoginWithGoogle,
+  onLogout,
 }) => {
   const [activeTab, setActiveTab] = useState<'analytics' | 'orders' | 'products' | 'payments'>('analytics');
   const [orderSearch, setOrderSearch] = useState('');
@@ -176,6 +189,66 @@ export const AdminDashboardModal: React.FC<AdminDashboardModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Firebase Authentication & Live Sync Status Bar */}
+        <div className="bg-gradient-to-r from-[#0B1530] to-[#060D20] text-white px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-blue-900/60 text-xs">
+          <div className="flex items-center gap-2">
+            <Flame className="w-4 h-4 text-amber-400 fill-amber-400" />
+            <span className="font-semibold text-slate-200">Firebase Firestore:</span>
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+              Live (asia-southeast1)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {currentUser ? (
+              <div className="flex items-center gap-2.5">
+                {currentUser.photoURL && (
+                  <img
+                    src={currentUser.photoURL}
+                    alt={currentUser.displayName || 'Admin'}
+                    className="w-5 h-5 rounded-full border border-amber-400"
+                  />
+                )}
+                <span className="text-slate-300 font-mono-num text-[11px] truncate max-w-[160px]">
+                  {currentUser.email}
+                </span>
+                {isAdminUser ? (
+                  <span className="bg-amber-400 text-zinc-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-full">
+                    Admin Verified
+                  </span>
+                ) : (
+                  <span className="bg-zinc-700 text-zinc-300 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                    Viewer
+                  </span>
+                )}
+                {onLogout && (
+                  <button
+                    onClick={onLogout}
+                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-rose-300 hover:text-rose-200 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg transition-colors"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    <span>Sign Out</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400 hidden sm:inline">Sign in to manage remote orders:</span>
+                {onLoginWithGoogle && (
+                  <button
+                    onClick={onLoginWithGoogle}
+                    className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-zinc-950 bg-amber-400 hover:bg-amber-300 rounded-lg transition-all shadow-xs active:scale-95"
+                  >
+                    <LogIn className="w-3.5 h-3.5 text-zinc-950" />
+                    <span>Sign In with Google</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tab Navigation */}
